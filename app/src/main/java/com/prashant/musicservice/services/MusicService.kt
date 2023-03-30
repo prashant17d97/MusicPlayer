@@ -8,16 +8,19 @@ import android.os.Binder
 import android.os.Build
 import android.os.IBinder
 import android.util.Log
+import android.widget.Toast
 import androidx.annotation.RequiresApi
+import com.prashant.musicservice.MusicModel
+import com.prashant.musicservice.activity.MainActivity.Companion.weakReference
 
 class MusicService : Service(), MediaPlayer.OnCompletionListener,
     MediaPlayer.OnSeekCompleteListener, MediaPlayer.OnPreparedListener {
 
     private var mediaPlayer: MediaPlayer? = null
-    private var songList: List<String>? = null
+    private var songList: List<String> = listOf()
     private var currentSongIndex: Int = 0
-    var isPaused: Boolean = false
-    private var isPrepared: Boolean = false
+    private var isPaused: Boolean = false
+    var isPrepared: Boolean = false
     private var isSeeking: Boolean = false
     private var seekTarget: Int = 0
 
@@ -47,8 +50,6 @@ class MusicService : Service(), MediaPlayer.OnCompletionListener,
         val songUriList = intent?.getStringArrayListExtra(SONG_LIST)
         if (songUriList != null) {
             songList = songUriList
-            Log.e("TAG", "startPlaying: $songList")
-            startPlaying(songList!![currentSongIndex])
         }
         return START_STICKY
     }
@@ -59,11 +60,23 @@ class MusicService : Service(), MediaPlayer.OnCompletionListener,
     }
 
     override fun onCompletion(mediaPlayer: MediaPlayer?) {
-        if (currentSongIndex < (songList?.size?.minus(1) ?: 0)) {
+        if (currentSongIndex < songList.lastIndex) {
             currentSongIndex++
-            startPlaying(songList!![currentSongIndex])
+            startPlaying(songList[currentSongIndex])
+            (weakReference.get())?.musicUpdate(
+                MusicModel(
+                    isPaused = isPaused,
+                    isPrepared = isPrepared,
+                )
+            )
         } else {
             // All songs in the list have been played
+            (weakReference.get())?.musicUpdate(
+                MusicModel(
+                    isPaused = false,
+                    isPrepared = false,
+                )
+            )
             stopSelf()
         }
     }
@@ -73,6 +86,7 @@ class MusicService : Service(), MediaPlayer.OnCompletionListener,
         if (isPrepared) {
             mediaPlayer?.start()
         }
+
     }
 
     override fun onPrepared(mediaPlayer: MediaPlayer?) {
@@ -80,9 +94,23 @@ class MusicService : Service(), MediaPlayer.OnCompletionListener,
         if (!isSeeking) {
             mediaPlayer?.start()
             sendPlaybackStartedBroadcast()
+            (weakReference.get())?.musicUpdate(
+                MusicModel(
+                    isPaused = isPaused,
+                    isPrepared = isPrepared,
+                )
+            )
         } else {
             mediaPlayer?.seekTo(seekTarget)
             isSeeking = false
+        }
+    }
+
+    fun initiatePlayer() {
+        if (songList.isNotEmpty()) {
+            startPlaying(songList[currentSongIndex])
+        } else {
+            Toast.makeText(this, "No songs found!", Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -121,17 +149,28 @@ class MusicService : Service(), MediaPlayer.OnCompletionListener,
         stopSelf()
     }
 
-    fun next() {
-        if (currentSongIndex < (songList?.size?.minus(1) ?: 0)) {
-            currentSongIndex++
-            startPlaying(songList!![currentSongIndex])
-        }
+    fun next(hasNext: (Boolean) -> Unit) {
+        hasNext(
+            if (currentSongIndex < songList.size.minus(1)) {
+                currentSongIndex++
+                startPlaying(songList[currentSongIndex])
+                true
+            } else {
+                false
+            }
+        )
     }
 
-    fun previous() {
+    fun previous(isSkipping:(Boolean)->Unit) {
         if (currentSongIndex > 0) {
             currentSongIndex--
-            startPlaying(songList!![currentSongIndex])
+            isSkipping(false)
+            startPlaying(songList[currentSongIndex])
+        } else {
+            isSkipping(true)
+            if (songList.isNotEmpty()){
+                skipTo(0)
+            }
         }
     }
 
@@ -144,7 +183,7 @@ class MusicService : Service(), MediaPlayer.OnCompletionListener,
         }
     }
 
-    private fun getDuration(): Int {
+    fun getDuration(): Int {
         return mediaPlayer?.duration ?: 0
     }
 
@@ -160,7 +199,7 @@ class MusicService : Service(), MediaPlayer.OnCompletionListener,
     private fun info() {
 
         val mediaMetadataRetriever = MediaMetadataRetriever()
-        mediaMetadataRetriever.setDataSource(songList?.get(currentSongIndex) ?: "", HashMap())
+        mediaMetadataRetriever.setDataSource(songList[currentSongIndex] ?: "", HashMap())
 
         val title =
             mediaMetadataRetriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_TITLE)
@@ -179,7 +218,7 @@ class MusicService : Service(), MediaPlayer.OnCompletionListener,
         // Retrieve the duration of the audio
         val image =
             mediaMetadataRetriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_IMAGE_PRIMARY)
-        val count=mediaMetadataRetriever.extractMetadata(
+        val count = mediaMetadataRetriever.extractMetadata(
             MediaMetadataRetriever.METADATA_KEY_IMAGE_COUNT
         )
 
@@ -197,5 +236,9 @@ class MusicService : Service(), MediaPlayer.OnCompletionListener,
         val intent = Intent(ACTION_PLAYBACK_STARTED)
         intent.putExtra(EXTRA_SONG_TITLE, currentSongTitle)
         sendBroadcast(intent)
+    }
+
+    fun playFromStart() {
+        startPlaying(songList[currentSongIndex])
     }
 }
