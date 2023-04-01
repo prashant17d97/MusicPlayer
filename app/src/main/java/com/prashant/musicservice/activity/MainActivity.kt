@@ -2,6 +2,9 @@ package com.prashant.musicservice.activity
 
 import android.Manifest.permission.POST_NOTIFICATIONS
 import android.content.*
+import android.content.res.Resources
+import android.graphics.BitmapShader
+import android.graphics.Shader
 import android.os.Build
 import android.os.Bundle
 import android.os.IBinder
@@ -18,6 +21,11 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.ShaderBrush
+import androidx.compose.ui.graphics.asAndroidBitmap
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.imageResource
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
