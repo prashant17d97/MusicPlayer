@@ -14,8 +14,8 @@ import javax.inject.Inject
 
 @HiltViewModel
 class MainVM @Inject constructor(
-     val notificationManager: NotificationManagerCompat,
-     val notificationBuilder: NotificationCompat.Builder
+    private val notificationManager: NotificationManagerCompat,
+    private val notificationBuilder: NotificationCompat.Builder
 ) : ViewModel() {
 
     fun showNotification() {

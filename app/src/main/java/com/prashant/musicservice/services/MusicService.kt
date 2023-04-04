@@ -1,5 +1,6 @@
 package com.prashant.musicservice.services
 
+import android.app.PendingIntent
 import android.app.Service
 import android.content.Intent
 import android.media.MediaMetadataRetriever
@@ -10,12 +11,25 @@ import android.os.IBinder
 import android.util.Log
 import android.widget.Toast
 import androidx.annotation.RequiresApi
+import androidx.core.app.NotificationCompat
+import androidx.core.app.NotificationManagerCompat
 import com.prashant.musicservice.MusicModel
+import com.prashant.musicservice.R
+import com.prashant.musicservice.activity.MainActivity
 import com.prashant.musicservice.activity.MainActivity.Companion.weakReference
+import com.prashant.musicservice.receivers.PlaybackStartedReceiver
+import dagger.hilt.android.AndroidEntryPoint
+import javax.inject.Inject
 
+@AndroidEntryPoint
 class MusicService : Service(), MediaPlayer.OnCompletionListener,
     MediaPlayer.OnSeekCompleteListener, MediaPlayer.OnPreparedListener {
 
+    @Inject
+    lateinit var notificationManager: NotificationManagerCompat
+
+    @Inject
+    lateinit var notificationBuilder: NotificationCompat.Builder
     private var mediaPlayer: MediaPlayer? = null
     private var songList: List<String> = listOf()
     private var currentSongIndex: Int = 0
@@ -29,11 +43,6 @@ class MusicService : Service(), MediaPlayer.OnCompletionListener,
 
     inner class MusicBinder : Binder() {
         fun getService(): MusicService = this@MusicService
-    }
-
-    companion object {
-        const val ACTION_PLAYBACK_STARTED = "com.prashant.musicservice.action.PLAYBACK_STARTED"
-        const val EXTRA_SONG_TITLE = "com.prashant.musicservice.extra.SONG_TITLE"
     }
 
     override fun onBind(intent: Intent): IBinder {
@@ -89,6 +98,7 @@ class MusicService : Service(), MediaPlayer.OnCompletionListener,
 
     }
 
+    @RequiresApi(Build.VERSION_CODES.P)
     override fun onPrepared(mediaPlayer: MediaPlayer?) {
         isPrepared = true
         if (!isSeeking) {
@@ -161,14 +171,14 @@ class MusicService : Service(), MediaPlayer.OnCompletionListener,
         )
     }
 
-    fun previous(isSkipping:(Boolean)->Unit) {
+    fun previous(isSkipping: (Boolean) -> Unit) {
         if (currentSongIndex > 0) {
             currentSongIndex--
             isSkipping(false)
             startPlaying(songList[currentSongIndex])
         } else {
             isSkipping(true)
-            if (songList.isNotEmpty()){
+            if (songList.isNotEmpty()) {
                 skipTo(0)
             }
         }
@@ -196,10 +206,9 @@ class MusicService : Service(), MediaPlayer.OnCompletionListener,
     }
 
     @RequiresApi(Build.VERSION_CODES.P)
-    private fun info() {
-
+    private fun sendPlaybackStartedBroadcast() {
         val mediaMetadataRetriever = MediaMetadataRetriever()
-        mediaMetadataRetriever.setDataSource(songList[currentSongIndex] ?: "", HashMap())
+        mediaMetadataRetriever.setDataSource(songList[currentSongIndex], HashMap())
 
         val title =
             mediaMetadataRetriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_TITLE)
@@ -222,20 +231,31 @@ class MusicService : Service(), MediaPlayer.OnCompletionListener,
             MediaMetadataRetriever.METADATA_KEY_IMAGE_COUNT
         )
 
-        // Release the resources used by the MediaMetadataRetriever
         mediaMetadataRetriever.release()
         Log.e(
             "TAG",
             "info: title:$title, artist: $artist, album: $album, duration:$duration,  image: $image,  imageCount:  $count",
         )
-    }
 
-    private fun sendPlaybackStartedBroadcast() {
-        val currentSongTitle =
-            "info: ${trackInfo()?.get(0)?.format} ${getCurrentPosition()} ${getDuration()}"
-        val intent = Intent(ACTION_PLAYBACK_STARTED)
-        intent.putExtra(EXTRA_SONG_TITLE, currentSongTitle)
+        val intent = Intent(this, PlaybackStartedReceiver::class.java).apply {
+            putExtra(EXTRA_SONG_TITLE, title)
+        }
         sendBroadcast(intent)
+       /* val flag = PendingIntent.FLAG_IMMUTABLE
+        val pendingIntent = PendingIntent.getBroadcast(
+            this,
+            0,
+            intent,
+            flag
+        )
+        notificationManager.notify(
+            1,
+            notificationBuilder
+                .setContentTitle(title)
+                .setContentText("Plyer has Started")
+                .addAction(0, "Pause", pendingIntent)
+                .build()
+        )*/
     }
 
     fun playFromStart() {

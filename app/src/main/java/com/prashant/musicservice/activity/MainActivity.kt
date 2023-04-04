@@ -24,7 +24,7 @@ import androidx.compose.ui.unit.dp
 import com.prashant.musicservice.MusicModel
 import com.prashant.musicservice.R
 import com.prashant.musicservice.interfaces.MusicServiceUpdate
-import com.prashant.musicservice.receivers.PlaybackStartedReceiver
+import com.prashant.musicservice.services.EXTRA_SONG_TITLE
 import com.prashant.musicservice.services.MusicService
 import com.prashant.musicservice.services.SONG_LIST
 import com.prashant.musicservice.ui.theme.MusicServiceTheme
@@ -47,7 +47,7 @@ class MainActivity : ComponentActivity(), MusicServiceUpdate {
 
 
     private val mainVM by viewModels<MainVM>()
-    private lateinit var receiver: PlaybackStartedReceiver
+//    private lateinit var receiver: PlaybackStartedReceiver
 
     private val permissionLauncher =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) {
@@ -77,13 +77,13 @@ class MainActivity : ComponentActivity(), MusicServiceUpdate {
     @RequiresApi(Build.VERSION_CODES.O)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        receiver = PlaybackStartedReceiver(mainVM.notificationManager, mainVM.notificationBuilder)
+//        receiver = PlaybackStartedReceiver(mainVM.notificationManager, mainVM.notificationBuilder)
         launchPermission()
         weakReference = WeakReference(this)
-        registerReceiver(
+        /*registerReceiver(
             receiver,
             IntentFilter(MusicService.ACTION_PLAYBACK_STARTED)
-        )
+        )*/
         setContent {
             MusicServiceTheme {
                 // A surface container using the 'background' color from the theme
@@ -97,8 +97,16 @@ class MainActivity : ComponentActivity(), MusicServiceUpdate {
         }
     }
 
+    private fun intentListener() {
+        val data = intent?.getStringExtra("my_data")
+
+        // Do whatever you need to do with the data
+        Log.e("MainActivity", "Received data: $data")
+    }
+
     override fun onStart() {
         super.onStart()
+        intentListener()
         val intent = Intent(this@MainActivity, MusicService::class.java).apply {
             putStringArrayListExtra(
                 SONG_LIST, retrieveSongs()
@@ -110,7 +118,7 @@ class MainActivity : ComponentActivity(), MusicServiceUpdate {
 
     override fun onDestroy() {
         super.onDestroy()
-        unregisterReceiver(receiver)
+//        unregisterReceiver(receiver)
         weakReference = WeakReference(null)
     }
 
