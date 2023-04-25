@@ -24,7 +24,6 @@ import androidx.compose.ui.unit.dp
 import com.prashant.musicservice.MusicModel
 import com.prashant.musicservice.R
 import com.prashant.musicservice.interfaces.MusicServiceUpdate
-import com.prashant.musicservice.services.EXTRA_SONG_TITLE
 import com.prashant.musicservice.services.MusicService
 import com.prashant.musicservice.services.SONG_LIST
 import com.prashant.musicservice.ui.theme.MusicServiceTheme
@@ -47,7 +46,7 @@ class MainActivity : ComponentActivity(), MusicServiceUpdate {
 
 
     private val mainVM by viewModels<MainVM>()
-//    private lateinit var receiver: PlaybackStartedReceiver
+//  private lateinit var receiver: PlaybackStartedReceiver
 
     private val permissionLauncher =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) {
@@ -118,7 +117,6 @@ class MainActivity : ComponentActivity(), MusicServiceUpdate {
 
     override fun onDestroy() {
         super.onDestroy()
-//        unregisterReceiver(receiver)
         weakReference = WeakReference(null)
     }
 
